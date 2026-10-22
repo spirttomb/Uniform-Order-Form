@@ -50,7 +50,7 @@
         .appbar-inner { max-width: 1180px; margin: 0 auto; padding: 0.6rem 1.5rem; display: flex; align-items: center; gap: 0.9rem; }
         .brand { display: flex; align-items: center; gap: 0.7rem; }
         .brand-mark { width: 36px; height: 36px; border-radius: 11px; background: var(--gold); color: var(--navy-950); display: grid; place-items: center; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.12); }
-        .brand-name { font-weight: 800; font-size: 1.08rem; letter-spacing: -0.01em; line-height: 1; }
+        .brand-name { font-weight: 800; font-size: 1.12rem; letter-spacing: -0.01em; line-height: 1; white-space: nowrap; }
         .brand-name small { display: block; font-weight: 600; font-size: 0.66rem; color: #8ea6bf; letter-spacing: 0.16em; text-transform: uppercase; margin-top: 0.25rem; }
         .tabs { display: flex; gap: 0.25rem; margin-left: 0.8rem; background: rgba(255, 255, 255, 0.07); padding: 3px; border-radius: 12px; }
         .tabs button { border: none; background: transparent; color: #c6d5e4; font-weight: 700; font-size: 0.9rem; padding: 0.45rem 0.85rem; border-radius: 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem; }
@@ -242,6 +242,7 @@
         .shop-link { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.84rem; font-weight: 800; color: var(--navy-700); text-decoration: none; padding: 0.4rem 0.6rem; border-radius: 9px; background: var(--tint); white-space: nowrap; }
         .shop-link:hover { background: var(--canvas); }
         .o-empty { padding: 2.5rem 1rem; text-align: center; color: var(--muted); }
+        .o-empty svg { display: none; }
         .o-request { white-space: pre-wrap; }
         .hist-row { display: flex; gap: 0.8rem; padding: 0.75rem 1.2rem; border-bottom: 1px solid var(--line); align-items: flex-start; flex-wrap: wrap; }
         .hist-row:last-child { border-bottom: none; }
@@ -321,8 +322,7 @@
 <header class="appbar">
     <div class="appbar-inner">
         <div class="brand">
-            <span class="brand-mark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l-5 3 2 4 2-1v12h10V9l2 1 2-4-5-3c-.5 1.5-2 2.5-4 2.5S8.5 4.5 8 3z"/></svg></span>
-            <div class="brand-name">Uniform<small>Shop</small></div>
+            <div class="brand-name">Uniform Shop</div>
         </div>
         <nav class="tabs" id="tabs" hidden>
             <button type="button" class="on" data-view="shop" onclick="showView('shop')">Shop</button>
@@ -339,9 +339,8 @@
 <div id="shopView">
     <section class="hero">
         <div class="hero-inner">
-            <div class="eyebrow">Uniform Shop</div>
-            <h1 id="hello">Order your uniform</h1>
-            <p>Pick your items and sizes, then place the order. Your leader orders them for you.</p>
+            <h1>Uniform Order</h1>
+            <p id="hello">Choose your items and sizes, then place your order.</p>
         </div>
     </section>
     <main class="workspace">
@@ -353,8 +352,7 @@
 <div id="ordersView" hidden>
     <section class="hero">
         <div class="hero-inner">
-            <div class="eyebrow">Orders</div>
-            <h1>What people ordered</h1>
+            <h1>Orders</h1>
             <p>Order items on Team Style, then mark them ordered to clear them from this list.</p>
         </div>
     </section>
@@ -407,29 +405,31 @@ const F = {
     other: "entry.1228459496"
 };
 
-const TOPS = ["XS", "S", "M", "L", "XL", "2X", "3X", "4X", "5X", "6X"];
 const range = (a, b, step = 2) => { const o = []; for (let n = a; n <= b; n += step) o.push(String(n)); return o; };
+const TOPS = ["XS", "S", "M", "L", "XL", "2X", "3X", "4X", "5X", "6X"];
+const WOMENS = ["00", "0"].concat(range(2, 26));   // every Women's fit uses these
+// sizes: { m: men's sizes (or "waist" for waist + inseam), f: women's sizes }
 const TS = "https://cfateamstyle.com/";
 
 // Each product: one form field. "fits" = Men's / Women's (picks the right Team Style link).
 const PRODUCTS = [
-    { key: "tl_pullover", name: "Team Leader Pullover", cat: "tops", price: [35], field: "entry.15105497", fits: true, sizes: TOPS, leadersOnly: true,
+    { key: "tl_pullover", name: "Team Leader Pullover", cat: "tops", price: [35], field: "entry.15105497", fits: true, sizes: { m: TOPS, f: WOMENS }, leadersOnly: true,
       links: { m: TS + "male-palomar-pullover.html", f: TS + "female-palomar-pullover.html" } },
-    { key: "tm_pullover", name: "Team Member Pullover", cat: "tops", price: [33], field: "entry.2092280460", fits: true, sizes: TOPS,
+    { key: "tm_pullover", name: "Team Member Pullover", cat: "tops", price: [33], field: "entry.2092280460", fits: true, sizes: { m: TOPS, f: WOMENS },
       links: { m: TS + "male-lindale-pullover.html", f: TS + "female-lindale-pullover.html" } },
-    { key: "crew", name: "Team Member Crewneck", cat: "tops", price: [35], field: "entry.692053438", fits: true, sizes: TOPS,
+    { key: "crew", name: "Team Member Crewneck", cat: "tops", price: [35], field: "entry.692053438", fits: true, sizes: { m: TOPS, f: WOMENS },
       links: { m: TS + "unisex-cambridge-crew-male.html", f: TS + "unisex-cambridge-crew-female.html" } },
-    { key: "polo", name: "Polo", cat: "tops", price: [20, 29], field: "entry.1663357320", fits: true, sizes: TOPS,
+    { key: "polo", name: "Polo", cat: "tops", price: [20, 29], field: "entry.1663357320", fits: true, sizes: { m: TOPS, f: WOMENS },
       styles: [
           { id: "std", label: "Team Member", img: "polo", links: { m: TS + "male-shea-polo.html", f: TS + "female-shea-polo.html" } },
           { id: "trainer", label: "Trainer", img: "polo_trainer", links: { m: TS + "male-kenwood-polo-red.html", f: TS + "female-kenwood-polo-red.html" } }
       ] },
-    { key: "fleece", name: "Fleece Jacket", cat: "tops", price: [38], field: "entry.898916653", fits: true, sizes: TOPS,
+    { key: "fleece", name: "Fleece Jacket", cat: "tops", price: [38], field: "entry.898916653", fits: true, sizes: { m: TOPS, f: WOMENS },
       links: { m: TS + "male-chapel-fleece.html", f: TS + "female-chapel-fleece.html" } },
-    { key: "pants", name: "Pants", cat: "bottoms", price: [29, 32], field: "entry.1972788123", fits: true, waist: range(28, 60), inseam: range(28, 36),
+    { key: "pants", name: "Pants", cat: "bottoms", price: [29, 32], field: "entry.1972788123", fits: true, sizes: { m: "waist", f: WOMENS }, waist: range(28, 60), inseam: range(28, 36),
       links: { m: TS + "male-smithtown-pant-navy.html", f: TS + "female-smithtown-pant-navy.html" } },
     { key: "shorts", name: "Shorts", cat: "bottoms", price: [28], field: "entry.1139886365", fits: true, fohOnly: true,
-      sizesByFit: { f: ["00", "0"].concat(range(2, 26)), m: range(28, 46) },
+      sizes: { m: range(28, 46), f: WOMENS },
       links: { m: TS + "male-hydrochill-drive-thru-short-navy.html", f: TS + "female-hydrochill-drive-thru-short-navy.html" } },
     { key: "belt", name: "Belt", cat: "extras", price: [13], field: "entry.1424382920", oneSize: true, links: { u: TS + "unisex-taylors-belts.html" } },
     { key: "apron", name: "Apron", cat: "extras", price: [13], field: "entry.901491295", oneSize: true, links: { u: TS + "cicero-apron.html" } },
@@ -466,15 +466,13 @@ const ICON = {
     lock: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
     ext: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>',
     x: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
-    shirt: '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l-5 3 2 4 2-1v12h10V9l2 1 2-4-5-3c-.5 1.5-2 2.5-4 2.5S8.5 4.5 8 3z"/></svg>',
-    bag: '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.2 11.1a2 2 0 0 1-2 1.9H8.2a2 2 0 0 1-2-1.9z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
     check: '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
     refresh: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></svg>'
 };
 // The small source photos (about 230px) shouldn't be blown up past ~1.5x in the big view
 const SMALL_PHOTOS = ["polo", "polo_trainer", "tm_pullover", "tl_pullover", "quilted", "trapper", "beanie", "pom"];
 function photoHtml(key, alt) {
-    return IMG[key] ? `<img src="${IMG[key]}" alt="${esc(alt || "")}" loading="lazy" class="${SMALL_PHOTOS.includes(key) ? "small" : ""}">` : `<div class="none">${ICON.shirt}Photo coming soon</div>`;
+    return IMG[key] ? `<img src="${IMG[key]}" alt="${esc(alt || "")}" loading="lazy" class="${SMALL_PHOTOS.includes(key) ? "small" : ""}">` : `<div class="none">Photo coming soon</div>`;
 }
 
 // =====================================================================
@@ -590,7 +588,7 @@ async function handleLogin() {
 function startSession() {
     $("signin").hidden = true;
     $("who").innerHTML = `<span class="avatar">${esc(initials(user.name))}</span><span>${esc(user.name)}</span>`;
-    $("hello").textContent = `Hi ${user.name.split(" ")[0]}, what do you need?`;
+    $("hello").textContent = `Ordering as ${user.name}. Choose your items and sizes, then place your order.`;
     $("tabs").hidden = !user.admin;
     cart = loadCart();
     renderShop();
@@ -637,7 +635,7 @@ function renderShop() {
         const lock = lockReason(p);
         const inCart = cart.filter(l => l.key === p.key).reduce((s, l) => s + l.qty, 0);
         const img = p.styles ? p.styles[0].img : p.key;
-        const meta = p.oneSize ? "One size" : p.waist ? "Waist & inseam" : p.sizesByFit ? "Men's & women's sizes" : "XS–6X";
+        const meta = p.oneSize ? "One size" : `Men's ${p.sizes.m === "waist" ? "waist & inseam" : p.sizes.m[0] + "–" + p.sizes.m[p.sizes.m.length - 1]} · Women's 00–26`;
         return `<button type="button" class="product ${lock ? "locked" : ""}" ${lock ? "disabled" : `onclick="openProduct('${p.key}')"`}>
             <div class="photo">${photoHtml(img, p.name)}
                 ${p.leadersOnly ? `<span class="flag">Leaders</span>` : p.fohOnly ? `<span class="flag">FOH</span>` : ""}
@@ -674,13 +672,12 @@ function pdLink() {
     return links.u || links[pd.fit || "m"];
 }
 function pdImg() { return pd.p.styles ? pd.p.styles.find(s => s.id === pd.style).img : pd.p.key; }
-function pdSizes() { return pd.p.sizesByFit ? (pd.fit ? pd.p.sizesByFit[pd.fit] : []) : pd.p.sizes || []; }
+function pdSpec() { return pd.p.sizes && pd.fit ? pd.p.sizes[pd.fit] : null; }   // a size list, "waist", or null
 function pdMissing() {
-    const p = pd.p, miss = [];
+    const p = pd.p, miss = [], spec = pdSpec();
     if (p.fits && !pd.fit) miss.push("fit");
-    if ((p.sizes || p.sizesByFit) && !pd.size) miss.push("size");
-    if (p.waist && !pd.waist) miss.push("waist");
-    if (p.inseam && !pd.inseam) miss.push("inseam");
+    if (Array.isArray(spec) && !pd.size) miss.push("size");
+    if (spec === "waist") { if (!pd.waist) miss.push("waist"); if (!pd.inseam) miss.push("inseam"); }
     return miss;
 }
 
@@ -699,11 +696,14 @@ function renderProduct() {
     if (p.fits) parts.push(opt("fit", "Fit", "", `<div class="seg">
         <button type="button" class="${pd.fit === "m" ? "on" : ""}" onclick="setFit('m')">Men's</button>
         <button type="button" class="${pd.fit === "f" ? "on" : ""}" onclick="setFit('f')">Women's</button></div>`));
-    if (p.sizes) parts.push(opt("size", "Size", pd.size, sizeButtons(p.sizes, pd.size, "size")));
-    if (p.sizesByFit) parts.push(opt("size", pd.fit === "f" ? "Women's size" : pd.fit === "m" ? "Men's size" : "Size", pd.size,
-        pd.fit ? sizeButtons(pdSizes(), pd.size, "size") : `<div class="pd-note">Pick a fit first.</div>`));
-    if (p.waist) parts.push(opt("waist", "Waist", pd.waist, sizeButtons(p.waist, pd.waist, "waist")));
-    if (p.inseam) parts.push(opt("inseam", "Inseam", pd.inseam, sizeButtons(p.inseam, pd.inseam, "inseam")));
+    if (p.sizes) {
+        const spec = pdSpec();
+        if (!spec) parts.push(opt("size", "Size", "", `<div class="pd-note">Pick Men's or Women's to see sizes.</div>`));
+        else if (spec === "waist") {
+            parts.push(opt("waist", "Waist", pd.waist, sizeButtons(p.waist, pd.waist, "waist")));
+            parts.push(opt("inseam", "Inseam", pd.inseam, sizeButtons(p.inseam, pd.inseam, "inseam")));
+        } else parts.push(opt("size", pd.fit === "f" ? "Women's size" : "Men's size", pd.size, sizeButtons(spec, pd.size, "size")));
+    }
     if (p.oneSize) parts.push(`<div class="pd-note">One size fits all.</div>`);
     const lock = p.leadersOnly ? "For leaders." : p.fohOnly ? "For front of house." : "";
     $("productSheet").innerHTML = `<div class="pd">
@@ -726,7 +726,7 @@ function renderProduct() {
 }
 
 function setFit(f) {
-    if (pd.p.sizesByFit && pd.fit !== f) pd.size = "";
+    if (pd.fit !== f) { pd.size = ""; pd.waist = ""; pd.inseam = ""; }
     pd.fit = f;
     renderProduct();
 }
@@ -784,13 +784,13 @@ function closeCart() { $("cartOverlay").classList.remove("active"); }
 function renderCart() {
     const body = $("cartBody");
     if (!cart.length) {
-        body.innerHTML = `<div class="cart-empty"><div class="big">${ICON.bag}</div><b>Your cart is empty</b><p style="margin-top:0.3rem">Pick something from the shop, or just send a request below.</p></div>`;
+        body.innerHTML = `<div class="cart-empty"><b>Your cart is empty</b><p style="margin-top:0.3rem">Pick something from the shop, or just send a request below.</p></div>`;
     } else {
         body.innerHTML = cart.map((l, i) => {
             const p = productByKey(l.key);
             const pr = p.price;
             return `<div class="line">
-                <div class="thumb">${IMG[l.img] ? `<img src="${IMG[l.img]}" alt="">` : ICON.shirt}</div>
+                <div class="thumb">${IMG[l.img] ? `<img src="${IMG[l.img]}" alt="">` : ""}</div>
                 <div class="line-main">
                     <div class="line-name">${esc(p.name)}</div>
                     <div class="line-det">${esc(l.det)}</div>
@@ -1074,7 +1074,7 @@ function byItemHtml(items) {
         const all = list.every(it => selected.has(it.id));
         return `<div class="card o-group">
             <div class="o-head">
-                <span class="thumb">${p ? photoHtml(itemImg(key, sample), title) : ICON.shirt}</span>
+                ${p ? `<span class="thumb">${photoHtml(itemImg(key, sample), title)}</span>` : ""}
                 <div><div class="o-title">${esc(title)}</div><div class="o-sub">${gk === "other" ? `${list.length} request${list.length === 1 ? "" : "s"}` : `${total} total`}</div></div>
                 <div class="push">${linksHtml}<button type="button" class="link-btn" onclick="selectMany(${esc(JSON.stringify(list.map(i => i.id)))}, ${!all})">${all ? "Unselect all" : "Select all"}</button></div>
             </div>
