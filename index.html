@@ -9,7 +9,7 @@
         @font-face {
             font-family: 'Apercu Regular Pro';
             src: url('apercu_regular_pro.otf') format('opentype'),
-                 url('https://spirttomb.github.io/Checklist-Tracker/apercu_regular_pro.otf') format('opentype');
+                 url('https://spirttomb.github.io/Lineup-Generator/apercu_regular_pro.otf') format('opentype');
             font-weight: normal;
             font-style: normal;
             font-display: swap;
@@ -244,6 +244,12 @@
         .o-empty { padding: 2.5rem 1rem; text-align: center; color: var(--muted); }
         .o-empty svg { display: none; }
         .o-request { white-space: pre-wrap; }
+        .search-wrap { flex: 1; min-width: 12rem; max-width: 26rem; }
+        .search-wrap .field { padding: 0.6rem 0.85rem; }
+        .o-item.hist { cursor: default; }
+        .o-item.hist:hover { background: transparent; }
+        .o-item.hist .o-sub { margin-top: 0.15rem; }
+        .btn-secondary.sm { padding: 0.45rem 0.75rem; font-size: 0.85rem; border-radius: 10px; }
         .hist-row { display: flex; gap: 0.8rem; padding: 0.75rem 1.2rem; border-bottom: 1px solid var(--line); align-items: flex-start; flex-wrap: wrap; }
         .hist-row:last-child { border-bottom: none; }
         .hist-row ul { list-style: none; flex: 1; min-width: 14rem; }
@@ -289,6 +295,10 @@
             .o-main { flex: 1 1 calc(100% - 2.2rem); }
             .o-item .o-when { margin-left: 1.95rem; }
             .o-item .shop-link { margin-left: auto; }
+            .o-item.hist .shop-link { margin-left: 0; }
+            .search-wrap { flex: 1 1 100%; max-width: none; }
+            .o-item.hist .o-main { flex-basis: 100%; }
+            .tabs button { padding: 0.45rem 0.5rem; }
             .chips { flex-wrap: nowrap; overflow-x: auto; margin: 0 -0.75rem 1rem; padding: 0 0.75rem 0.3rem; scrollbar-width: none; }
             .chips::-webkit-scrollbar { display: none; }
             .chip { flex-shrink: 0; }
@@ -327,6 +337,7 @@
         <nav class="tabs" id="tabs" hidden>
             <button type="button" class="on" data-view="shop" onclick="showView('shop')">Shop</button>
             <button type="button" data-view="orders" onclick="showView('orders')">Orders <span class="count" id="orderCount" hidden></span></button>
+            <button type="button" data-view="history" onclick="showView('history')">History</button>
         </nav>
         <div class="bar-actions">
             <div class="who" id="who"></div>
@@ -357,6 +368,16 @@
         </div>
     </section>
     <main class="workspace" id="ordersPanel"></main>
+</div>
+
+<div id="historyView" hidden>
+    <section class="hero">
+        <div class="hero-inner">
+            <h1>Order history</h1>
+            <p>Everything marked as ordered. Put an item back if it was marked by mistake.</p>
+        </div>
+    </section>
+    <main class="workspace" id="historyPanel"></main>
 </div>
 
 <div class="selbar" id="selbar">
@@ -398,6 +419,7 @@ const ORDERS_SHEET_ID = "1aTeIEpDgG5wAIMeHQf42NoN-j2qE1DCxQDWIBSzSkLI";
 const FORM_ID = "1FAIpQLSd-SsddwHGEHJrh9ov-kZ9K9uo1AmvjIVpVf_jnC3JvAKoxzw";
 
 // Only these people (names exactly as on the staff sheet) see the Orders tab
+// Matched against the shop name ("Sharron M") or the full name on the staff sheet ("Sharron Murray")
 const ORDER_ADMINS = ["Sharron M"];
 
 const F = {
@@ -545,9 +567,45 @@ async function loadPinDatabase() {
         if (name && pin && !/^name$/i.test(name)) db[pin] = { name, role, house };
     });
     if (!Object.keys(db).length) return false;
+    // Shop names: nickname (or first name) + last initial. If two people match, more letters of the last name are added.
+    const short = shopNames(Object.values(db).map(r => r.name));
+    Object.values(db).forEach(r => { r.full = r.name; r.name = short[r.name] || r.name; });
     PIN_DATABASE = db;
     staffReady = true;
     return true;
+}
+
+// "Ariane Braggs (Ari)" -> "Ari B"; "Ariane Braggs" -> "Ariane B"; "Josh E" stays "Josh E"
+function splitStaffName(full) {
+    const str = String(full || "");
+    const m = str.match(/\(([^)]*)\)/);
+    const base = str.replace(/\([^)]*\)/g, " ").replace(/\s+/g, " ").trim();
+    const words = base.split(" ");
+    const first = words[0] || "";
+    const last = words.slice(1).join(" ");
+    const nick = m ? m[1].split(/\s+or\s+|\//i)[0].trim() : "";
+    return { base, first, last, call: nick || first };
+}
+function shopNames(names) {
+    const info = names.map(n => ({ n, ...splitStaffName(n) }));
+    const letters = s => s.last.replace(/[^A-Za-z]/g, "");
+    const make = (x, k) => { const l = letters(x); return l ? `${x.call} ${l.charAt(0).toUpperCase()}${l.slice(1, k).toLowerCase()}` : x.call; };
+    const len = {};
+    info.forEach(x => { len[x.n] = 1; });
+    // keep adding letters to everyone who still shares a shop name
+    for (let round = 0; round < 30; round++) {
+        const groups = {};
+        info.forEach(x => { const k = make(x, len[x.n]).toLowerCase(); (groups[k] = groups[k] || []).push(x); });
+        let changed = false;
+        Object.values(groups).forEach(g => {
+            if (g.length < 2) return;
+            g.forEach(x => { if (len[x.n] < letters(x).length) { len[x.n]++; changed = true; } });
+        });
+        if (!changed) break;
+    }
+    const out = {};
+    info.forEach(x => { out[x.n] = make(x, len[x.n]); });
+    return out;
 }
 
 function pinKey(d) {
@@ -580,7 +638,9 @@ async function handleLogin() {
     }
     msg.textContent = "";
     input.value = "";
-    user = { name: rec.name, role: rec.role, house: rec.house, admin: ORDER_ADMINS.some(n => n.toLowerCase() === rec.name.toLowerCase()) };
+    const fullBase = splitStaffName(rec.full || rec.name).base.toLowerCase();
+    user = { name: rec.name, full: rec.full || rec.name, role: rec.role, house: rec.house,
+        admin: ORDER_ADMINS.some(n => n.toLowerCase() === rec.name.toLowerCase() || n.toLowerCase() === fullBase) };
     try { sessionStorage.setItem("uniformPin", pin); } catch (e) {}
     startSession();
 }
@@ -611,8 +671,10 @@ function signOut() {
 function showView(v) {
     $("shopView").hidden = v !== "shop";
     $("ordersView").hidden = v !== "orders";
+    $("historyView").hidden = v !== "history";
     document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === v));
     if (v === "orders") renderOrders(); else clearSelection();
+    if (v === "history") renderHistory();
     window.scrollTo(0, 0);
 }
 
@@ -869,6 +931,9 @@ async function placeOrder() {
 // Those rows are the order history; the items they list are hidden here.
 // =====================================================================
 const MARK_PREFIX = "ORDERED:";
+const RESTORE_PREFIX = "RESTORED:";   // "Put back": the items show up in Orders again
+let histQuery = "";
+let sheetEventCount = 0;   // how many ordered/put-back rows the sheet had at the last load
 let orders = null;          // { items: [...], history: [...] }
 let ordersLoading = false;
 let ordersError = "";
@@ -933,6 +998,7 @@ async function loadOrders(quiet) {
     if (!t) {
         ordersError = "Couldn't read the order sheet. Make sure it's shared so anyone with the link can view.";
         if (!$("ordersView").hidden) renderOrders();
+        if (!$("historyView").hidden) renderHistory();
         return;
     }
     // Map columns to products by their question titles, falling back to the form's order
@@ -941,16 +1007,16 @@ async function loadOrders(quiet) {
     const idx = k => keys.indexOf(k);
     const iName = idx("name"), iOther = idx("other"), iTs = idx("timestamp") >= 0 ? idx("timestamp") : 0;
 
-    const items = [], marks = [], doneIds = new Set();
+    const items = [], events = [];
     t.rows.forEach(row => {
         const c = row.c || [];
         const name = cellText(c[iName]);
         const other = cellText(c[iOther]);
         const ts = tsInfo(c[iTs]);
-        if (other.startsWith(MARK_PREFIX)) {
-            const ids = other.slice(MARK_PREFIX.length).trim().split(/\s+/).filter(Boolean);
-            ids.forEach(id => doneIds.add(id));
-            marks.push({ by: name.replace(/^✔\s*Marked ordered by\s*/i, ""), date: ts.date, ids });
+        const op = other.startsWith(MARK_PREFIX) ? "ordered" : other.startsWith(RESTORE_PREFIX) ? "restored" : "";
+        if (op) {
+            const ids = other.slice((op === "ordered" ? MARK_PREFIX : RESTORE_PREFIX).length).trim().split(/\s+/).filter(Boolean);
+            events.push({ op, ids, date: ts.date, by: name.replace(/^(✔\s*Marked ordered by|↩\s*Put back by)\s*/i, "") });
             return;
         }
         if (!name && !keys.some((k, i) => k && k !== "timestamp" && cellText(c[i]))) return;
@@ -969,22 +1035,30 @@ async function loadOrders(quiet) {
             });
         });
     });
-    const local = new Set(store("uniformMarked") || []);
-    // Forget local marks once the sheet has them
-    const stillPending = [...local].filter(id => !doneIds.has(id));
-    store("uniformMarked", stillPending);
-    stillPending.forEach(id => doneIds.add(id));
-    const byId = {};
-    items.forEach(it => byId[it.id] = it);
+    // Marks this device sent that the sheet doesn't show yet (Google can take a few seconds).
+    // Matched by position: a mark is in the sheet once a row after the ones seen when it was sent has it.
+    const now = Date.now();
+    const sameIds = (a, b) => a.length === b.length && a.every(id => b.includes(id));
+    const pending = (store("uniformPending") || []).filter(pe => now - pe.at < 86400000 &&
+        !events.slice(pe.seen || 0).some(ev => ev.op === pe.op && sameIds(ev.ids, pe.ids)));
+    store("uniformPending", pending);
+    sheetEventCount = events.length;
+    pending.forEach(pe => events.push({ op: pe.op, ids: pe.ids, date: new Date(pe.at), by: pe.by }));
+    // Rows are in the order they were sent, so the last one for an item wins
+    const status = {};
+    events.forEach(ev => ev.ids.forEach(id => { status[id] = ev; }));
+    const isDone = it => status[it.id] && status[it.id].op === "ordered";
     orders = {
-        items: items.filter(it => !doneIds.has(it.id)).sort((a, b) => (b.date || 0) - (a.date || 0)),
-        history: marks.map(m => ({ ...m, list: m.ids.map(id => byId[id]).filter(Boolean) })).sort((a, b) => (b.date || 0) - (a.date || 0))
+        items: items.filter(it => !isDone(it)).sort((a, b) => (b.date || 0) - (a.date || 0)),
+        done: items.filter(isDone).map(it => ({ ...it, markedAt: status[it.id].date, markedBy: status[it.id].by }))
+            .sort((a, b) => (b.markedAt || 0) - (a.markedAt || 0))
     };
     [...selected].forEach(id => { if (!orders.items.some(it => it.id === id)) selected.delete(id); });
     const n = orders.items.length;
     $("orderCount").textContent = n;
     $("orderCount").hidden = !n;
     if (!$("ordersView").hidden) renderOrders();
+    if (!$("historyView").hidden) renderHistory();
 }
 
 function renderOrders() {
@@ -998,15 +1072,13 @@ function renderOrders() {
         <div class="seg">
             <button type="button" class="${oView === "person" ? "on" : ""}" onclick="oView='person'; renderOrders()">By person</button>
             <button type="button" class="${oView === "item" ? "on" : ""}" onclick="oView='item'; renderOrders()">By item</button>
-            <button type="button" class="${oView === "history" ? "on" : ""}" onclick="oView='history'; clearSelection(); renderOrders()">Ordered</button>
         </div>
-        <div class="o-stats">${oView === "history" ? `<span class="pill">${orders.history.length} times marked</span>` : `<span class="pill gold">${pieces} piece${pieces === 1 ? "" : "s"} to order</span><span class="pill">${people} ${people === 1 ? "person" : "people"}</span>`}</div>
+        <div class="o-stats"><span class="pill gold">${pieces} piece${pieces === 1 ? "" : "s"} to order</span><span class="pill">${people} ${people === 1 ? "person" : "people"}</span></div>
         <button type="button" class="btn-secondary push" onclick="loadOrders()" ${ordersLoading ? "disabled" : ""}>${ICON.refresh} ${ordersLoading ? "Loading..." : "Refresh"}</button>
     </div></div>`;
     if (ordersError) html += `<div class="card"><div class="o-empty" style="padding:1rem"><b style="color:#b91c1c">${esc(ordersError)}</b></div></div>`;
 
-    if (oView === "history") html += historyHtml();
-    else if (!items.length) html += `<div class="card"><div class="o-empty">${ICON.check}<br><b>Nothing waiting.</b><br>New orders show up here.</div></div>`;
+    if (!items.length) html += `<div class="card"><div class="o-empty">${ICON.check}<br><b>Nothing waiting.</b><br>New orders show up here.</div></div>`;
     else if (oView === "person") html += byPersonHtml(items);
     else html += byItemHtml(items);
     P.innerHTML = html;
@@ -1082,13 +1154,81 @@ function byItemHtml(items) {
     }).join("");
 }
 
-function historyHtml() {
-    if (!orders.history.length) return `<div class="card"><div class="o-empty">Nothing marked ordered yet.</div></div>`;
-    return `<div class="card o-group">${orders.history.slice(0, 100).map(h => `
-        <div class="hist-row">
-            <div style="min-width:9rem"><div class="o-title" style="font-size:0.95rem">${esc(whenText(h.date))}</div><div class="o-sub">by ${esc(h.by || "someone")}</div></div>
-            <ul>${h.list.length ? h.list.map(it => `<li><b>${esc(it.name)}</b> · ${esc(it.key === "other" ? "Request" : productByKey(it.key) ? productByKey(it.key).name : it.key)} · ${it.key === "other" ? "" : it.qty + "× "}${esc(it.det)}</li>`).join("") : `<li>${h.ids.length} item${h.ids.length === 1 ? "" : "s"}</li>`}</ul>
-        </div>`).join("")}</div>`;
+function renderHistory() {
+    const P = $("historyPanel");
+    if (!orders && (ordersLoading || !ordersError)) { P.innerHTML = `<div class="card"><div class="loading"><div class="spinner"></div>Loading history...</div></div>`; return; }
+    if (ordersError && !orders) { P.innerHTML = `<div class="card"><div class="o-empty"><b style="color:#b91c1c">${esc(ordersError)}</b><br><br><button type="button" class="btn-secondary" onclick="loadOrders()">Try again</button></div></div>`; return; }
+    const q = histQuery.trim().toLowerCase();
+    const title = it => it.key === "other" ? "Other request" : productByKey(it.key) ? productByKey(it.key).name : it.key;
+    const list = orders.done.filter(it => !q || it.name.toLowerCase().includes(q) || title(it).toLowerCase().includes(q) || it.det.toLowerCase().includes(q));
+    const pieces = orders.done.filter(it => it.key !== "other").reduce((s, it) => s + it.qty, 0);
+    let html = `<div class="card"><div class="o-toolbar">
+        <div class="search-wrap"><input class="field" id="histSearch" placeholder="Search by name or item" value="${esc(histQuery)}" oninput="histQuery=this.value; renderHistoryList()"></div>
+        <div class="o-stats"><span class="pill">${pieces} piece${pieces === 1 ? "" : "s"} ordered</span></div>
+        <button type="button" class="btn-secondary push" onclick="loadOrders()" ${ordersLoading ? "disabled" : ""}>${ICON.refresh} ${ordersLoading ? "Loading..." : "Refresh"}</button>
+    </div></div><div id="histList"></div>`;
+    P.innerHTML = html;
+    renderHistoryList();
+}
+
+function renderHistoryList() {
+    const box = $("histList");
+    if (!box) return;
+    const q = histQuery.trim().toLowerCase();
+    const title = it => it.key === "other" ? "Other request" : productByKey(it.key) ? productByKey(it.key).name : it.key;
+    const list = orders.done.filter(it => !q || it.name.toLowerCase().includes(q) || title(it).toLowerCase().includes(q) || it.det.toLowerCase().includes(q));
+    if (!orders.done.length) { box.innerHTML = `<div class="card"><div class="o-empty"><b>No history yet.</b><br>Items you mark as ordered show up here.</div></div>`; return; }
+    if (!list.length) { box.innerHTML = `<div class="card"><div class="o-empty">Nothing matches that search.</div></div>`; return; }
+    // One card per original order (person + when they ordered), newest marked first
+    const groups = [];
+    list.forEach(it => {
+        let g = groups.find(x => x.rowId === it.rowId);
+        if (!g) groups.push(g = { rowId: it.rowId, name: it.name, date: it.date, items: [] });
+        g.items.push(it);
+    });
+    const order = PRODUCTS.map(p => p.key).concat(["other"]);
+    box.innerHTML = groups.map(g => {
+        g.items.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
+        return `<div class="card o-group">
+            <div class="o-head">
+                <span class="avatar">${esc(initials(g.name))}</span>
+                <div><div class="o-title">${esc(g.name)}</div><div class="o-sub">Requested ${esc(whenText(g.date))}</div></div>
+            </div>
+            ${g.items.map(it => {
+                const p = productByKey(it.key);
+                return `<div class="o-item hist">
+                    <div class="o-main">
+                        <div class="o-name">${esc(title(it))}</div>
+                        <div class="o-det ${it.key === "other" ? "o-request" : ""}">${it.key === "other" ? "" : `<span class="qty">${it.qty}×</span>`}${esc(it.det)}</div>
+                        <div class="o-sub">Marked ordered ${esc(whenText(it.markedAt))}${it.markedBy ? " by " + esc(it.markedBy) : ""}</div>
+                    </div>
+                    ${it.key !== "other" && p ? `<a class="shop-link" href="${esc(itemLink(it.key, it.det))}" target="_blank" rel="noopener">Team Style ${ICON.ext}</a>` : ""}
+                    <button type="button" class="btn-secondary sm" data-id="${esc(it.id)}" onclick="putBack(this.dataset.id, this)">Put back</button>
+                </div>`;
+            }).join("")}
+        </div>`;
+    }).join("");
+}
+
+async function putBack(id, btn) {
+    const it = orders.done.find(x => x.id === id);
+    if (!it) return;
+    if (btn) { btn.disabled = true; btn.textContent = "Saving..."; }
+    await submitToGoogleForm(FORM_ID, {
+        [F.name]: "↩ Put back by " + user.name,
+        [F.other]: RESTORE_PREFIX + " " + id
+    });
+    store("uniformPending", (store("uniformPending") || []).concat([{ op: "restored", ids: [id], at: Date.now(), by: user.name, seen: sheetEventCount }]));
+    orders.done = orders.done.filter(x => x.id !== id);
+    const back = { ...it };
+    delete back.markedAt; delete back.markedBy;
+    orders.items.push(back);
+    orders.items.sort((a, b) => (b.date || 0) - (a.date || 0));
+    $("orderCount").textContent = orders.items.length;
+    $("orderCount").hidden = !orders.items.length;
+    renderHistoryList();
+    toast(`${it.name}'s ${it.key === "other" ? "request" : productByKey(it.key) ? productByKey(it.key).name : "item"} is back in Orders.`, "success");
+    setTimeout(() => loadOrders(true), 5000);
 }
 
 function toggleSel(id) {
@@ -1114,10 +1254,11 @@ async function markSelectedOrdered() {
         [F.name]: "✔ Marked ordered by " + user.name,
         [F.other]: MARK_PREFIX + " " + ids.join(" ")
     });
-    store("uniformMarked", (store("uniformMarked") || []).concat(ids));
-    const done = orders.items.filter(it => selected.has(it.id));
+    const at = Date.now();
+    store("uniformPending", (store("uniformPending") || []).concat([{ op: "ordered", ids, at, by: user.name, seen: sheetEventCount }]));
+    const done = orders.items.filter(it => selected.has(it.id)).map(it => ({ ...it, markedAt: new Date(at), markedBy: user.name }));
     orders.items = orders.items.filter(it => !selected.has(it.id));
-    orders.history.unshift({ by: user.name, date: new Date(), ids, list: done });
+    orders.done = done.concat(orders.done);
     selected.clear();
     btn.disabled = false; btn.textContent = "Mark as ordered";
     $("orderCount").textContent = orders.items.length;
